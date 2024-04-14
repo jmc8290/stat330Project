@@ -11,6 +11,7 @@ For this analysis, we are considering the following variables:
 | Variable Name | Type        | Description                                                                     |
 |-----------------------------|------------------|-------------------------|
 | Sex           | Categorical | Student's Sex                                                                   |
+| School        | Categorical | Which School the Student went to (Gabriel Pereira or Mousinho da Silveira)      |
 | Age           | Continuous  | Student's Age in Years (Rounded Down)                                           |
 | Address       | Categorical | Whether a Student lives in a Rural Area or Urban Area                           |
 | Famsize       | Categorical | Whether a Student's Family is Less than or Equal to Three or Greater than Three |
@@ -30,8 +31,9 @@ For this analysis, we are considering the following variables:
 #This code does not need to be run again
 #This code can almost certainly be removed from the report
 data <- read.csv('student-mat.csv', sep = ';')
-dataCleaned <- data[-c(1, 7:14, 18:20, 24:29)]
+dataCleaned <- data[-c(7:14, 18:20, 24:29)]
 
+dataCleaned$gp = dataCleaned$school == 'GP'
 dataCleaned$female = dataCleaned$sex == 'F'
 dataCleaned$rural = dataCleaned$address == 'R'
 dataCleaned$bigFamily = dataCleaned$famsize == 'GT3'
@@ -42,12 +44,156 @@ dataCleaned$seeksCollege = dataCleaned$higher == 'yes'
 dataCleaned$internet = dataCleaned$internet == 'yes'
 dataCleaned$significantOther = dataCleaned$romantic == 'yes'
 
-dataCleaned <- dataCleaned[-c(1, 3:5, 7:11)]
+dataCleaned <- dataCleaned[-c(1:2, 4:6, 8:12)]
 
 write.csv(dataCleaned, "cleanedMathData.csv", row.names = FALSE)
 ```
 
 ```{r}
 fullDataSet <- read.csv('cleanedMathData.csv')
+fullDataSet <- fullDataSet[, c(1:5, 7:15, 6)]
 ```
+
+```{r}
+plot(jitter(fullDataSet$absences), jitter(fullDataSet$G3),
+     main = 'Comparing Abscences and Final Grade',
+     xlab = 'Number of Abscences',
+     ylab = 'Final Grade')
+```
+
+```{r}
+plot(jitter(fullDataSet$G1), jitter(fullDataSet$G3),
+     main = 'Comparing First Period Grade and Final Grade',
+     xlab = 'First Period Grade',
+     ylab = 'Final Grade')
+```
+
+```{r}
+plot(jitter(fullDataSet$G2), jitter(fullDataSet$G3),
+     main = 'Comparing Second Period Grade and Final Grade',
+     xlab = 'Second Period Grade',
+     ylab = 'Final Grade')
+```
+
+
+Boxplots between Grades and other categorical variables
+
+```{r}
+boxplot(fullDataSet$G3 ~ fullDataSet$gp,
+        main = 'Boxplot between Final Grade and School',
+        xlab = 'Attends Gabriel Pereira',
+        ylab = 'Final Grade')
+```
+
+
+```{r}
+boxplot(fullDataSet$G3 ~ fullDataSet$bigFamily,
+        main = 'Boxplot between Final Grade and Family Size',
+        xlab = 'Family Size Greater than 3',
+        ylab = 'Final Grade')
+```
+
+```{r}
+boxplot(fullDataSet$G3 ~ fullDataSet$rural,
+        main = 'Boxplot between Final Grade and whether Students Live Rurally',
+        xlab = 'Lives in Rural Area',
+        ylab = 'Final Grade')
+```
+
+```{r}
+boxplot(fullDataSet$G3 ~ fullDataSet$female,
+        main = 'Boxplot between Final Grade and Sex',
+        xlab = 'Female or not',
+        ylab = 'Final Grade')
+```
+
+```{r}
+boxplot(fullDataSet$G3 ~ fullDataSet$parentsApart,
+        main = 'Boxplot between Final Grade and Parents Housing Status',
+        xlab = 'Parents Separated or not',
+        ylab = 'Final Grade')
+```
+
+```{r}
+boxplot(fullDataSet$G3 ~ fullDataSet$extraSchool,
+        main = 'Boxplot between Final Grade and Extra Help at School',
+        xlab = 'Receives Extra Help',
+        ylab = 'Final Grade')
+```
+
+```{r}
+boxplot(fullDataSet$G3 ~ fullDataSet$familyHelp,
+        main = 'Boxplot between Final Grade and Help from Family at Home',
+        xlab = 'Receives Help from Family at Home',
+        ylab = 'Final Grade')
+```
+
+```{r}
+boxplot(fullDataSet$G3 ~ fullDataSet$seeksCollege,
+        main = 'Boxplot between Final Grade and Aspirations',
+        xlab = 'Aspires to go to College',
+        ylab = 'Final Grade')
+```
+
+```{r}
+boxplot(fullDataSet$G3 ~ fullDataSet$significantOther,
+        main = 'Boxplot between Final Grade and Romantic Relationship Status',
+        xlab = 'Has Significant Other',
+        ylab = 'Final Grade')
+```
+
+```{r}
+round(cor(fullDataSet), 2)
+```
+
+There appears to potentially be multicollinearity between the students' first period, second period, and final grades.
+
+For this project, we decided to use the AIC metric as it is less selective. Because of this, the model will result in a more explanatory model than using the BIC metric. We also elected to use best subsets as it will return the absolute best model possible based on this metric. Since there are only 14 variables, this option shouldn't take too long to execute.
+
+```{r}
+library(bestglm)
+
+bestSubset <- bestglm(fullDataSet, IC = 'AIC')
+bestSubset
+```
+
+This model decided the most significant variables for a students final grades are their first term grades, second term grades, number of absences, age of the student, and whether they are in a relationship.
+
+Now we will check the model assumptions.
+
+```{r}
+library(ggfortify)
+library(tidyverse)
+library(car)
+model <- lm(G3 ~ G1 + G2 + significantOther + age + absences, fullDataSet)
+avPlots(model)
+```
+
+From the added-variable plots, it appears that the absences variable has a pattern in its residuals. Other than that, the plots all appear to be mostly linear.
+
+```{r}
+fullDataSet$residuals <- model$residuals
+fullDataSet$fitted <- model$fitted.values
+shapiro.test(fullDataSet$residuals)
+```
+
+```{r}
+autoplot(model, which = 2)
+```
+
+Both a shapiro-wilk test and a QQ plot seem to indicate that the assumption of normal errors is violated.
+
+```{r}
+autoplot(model, which = 3)
+```
+
+The scale-location plot isn't very flat, as such it appears that the assumption of homoscedasticity is violated.
+
+```{r}
+autoplot(model, which = 4)
+```
+
+It appears that there are no points with undue influence, thus the tacit assumption that there are no points with undue influence nor high leverage is met.
+
+The data was collected by using school reports and questionaires. As such we can assume that the datapoints are independent as no other students answers should affect how another student answered the survey.
 
