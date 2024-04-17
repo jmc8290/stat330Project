@@ -9,7 +9,7 @@ For this project, our group selected the Portugese Student Performance dataset f
 For this analysis, we are considering the following variables:
 
 | Variable Name | Type        | Description                                                                     |
-|-----------------------------|------------------|-------------------------|
+|-----------------------------|-------------------|-------------------------|
 | Sex           | Categorical | Student's Sex                                                                   |
 | School        | Categorical | Which School the Student went to (Gabriel Pereira or Mousinho da Silveira)      |
 | Age           | Continuous  | Student's Age in Years (Rounded Down)                                           |
@@ -30,129 +30,158 @@ For this analysis, we are considering the following variables:
 ```{r}
 #This code does not need to be run again
 #This code can almost certainly be removed from the report
-data <- read.csv('student-mat.csv', sep = ';')
-dataCleaned <- data[-c(7:14, 18:20, 24:29)]
-
-dataCleaned$gp = dataCleaned$school == 'GP'
-dataCleaned$female = dataCleaned$sex == 'F'
-dataCleaned$rural = dataCleaned$address == 'R'
-dataCleaned$bigFamily = dataCleaned$famsize == 'GT3'
-dataCleaned$parentsApart = dataCleaned$Pstatus == 'A'
-dataCleaned$extraSchool = dataCleaned$schoolsup == 'yes'
-dataCleaned$familyHelp = dataCleaned$famsup == 'yes'
-dataCleaned$seeksCollege = dataCleaned$higher == 'yes'
-dataCleaned$internet = dataCleaned$internet == 'yes'
-dataCleaned$significantOther = dataCleaned$romantic == 'yes'
-
-dataCleaned <- dataCleaned[-c(1:2, 4:6, 8:12)]
-
-write.csv(dataCleaned, "cleanedMathData.csv", row.names = FALSE)
+# data <- read.csv('student-mat.csv', sep = ';')
+# dataCleaned <- data[-c(7:14, 18:20, 24:29)]
+# 
+# dataCleaned$gp = dataCleaned$school == 'GP'
+# dataCleaned$female = dataCleaned$sex == 'F'
+# dataCleaned$rural = dataCleaned$address == 'R'
+# dataCleaned$bigFamily = dataCleaned$famsize == 'GT3'
+# dataCleaned$parentsApart = dataCleaned$Pstatus == 'A'
+# dataCleaned$extraSchool = dataCleaned$schoolsup == 'yes'
+# dataCleaned$familyHelp = dataCleaned$famsup == 'yes'
+# dataCleaned$seeksCollege = dataCleaned$higher == 'yes'
+# dataCleaned$internet = dataCleaned$internet == 'yes'
+# dataCleaned$significantOther = dataCleaned$romantic == 'yes'
+# 
+# dataCleaned <- dataCleaned[-c(1:2, 4:6, 8:12)]
+# 
+# write.csv(dataCleaned, "cleanedMathData.csv", row.names = FALSE)
 ```
 
+#read in data and remove columns with absenses
 ```{r}
 fullDataSet <- read.csv('cleanedMathData.csv')
 fullDataSet <- fullDataSet[, c(1:2, 4:15, 3)]
 fullDataSet <- fullDataSet[fullDataSet$absences != 0, ]
 ```
 
+#Load Libraries
 ```{r}
-plot(jitter(fullDataSet$absences), jitter(fullDataSet$G3),
-     main = 'Comparing Abscences and Final Grade',
-     xlab = 'Number of Abscences',
-     ylab = 'Final Grade')
+
+library(ggplot2)
+library(gridExtra)
+library(ggfortify)
+library(tidyverse)
+library(car)
+library(bestglm)
+library(corrplot)
 ```
 
+#Exploratory Data
+
+##Continuous-Continuous data
 ```{r}
-plot(jitter(fullDataSet$G1), jitter(fullDataSet$G3),
-     main = 'Comparing First Period Grade and Final Grade',
-     xlab = 'First Period Grade',
-     ylab = 'Final Grade')
+#Scatterplots
+
+small_title <- theme(plot.title = element_text(size = 5))
+# Create scatterplots
+p1 <- ggplot(fullDataSet, aes(x = G3, y = absences)) +
+      geom_point(position = "jitter") +
+      labs(title = 'Comparing Final Grade and Absences',
+           x = 'Final Grade',
+           y = 'Number of Absences') +
+  small_title
+
+p2 <- ggplot(fullDataSet, aes(x = G1, y = absences)) +
+      geom_point(position = "jitter") +
+      labs(title = 'Comparing First Period Grade and Absences',
+           x = 'First Period Grade',
+           y = 'Absences') +
+  small_title
+
+p3 <- ggplot(fullDataSet, aes(x = G2, y = absences)) +
+      geom_point(position = "jitter") +
+      labs(title = 'Comparing Second Period Grade and Absences',
+           x = 'Second Period Grade',
+           y = 'Absences') +
+  small_title
+
+grid.arrange(p1,p2,p3,ncol=3)
 ```
 
+##Continuous-Categorical data
 ```{r}
-plot(jitter(fullDataSet$G2), jitter(fullDataSet$G3),
-     main = 'Comparing Second Period Grade and Final Grade',
-     xlab = 'Second Period Grade',
-     ylab = 'Final Grade')
+
+# Create boxplots
+b1 <- ggplot(fullDataSet, aes(x = gp, y = absences)) +
+      geom_boxplot() +
+      labs(title = 'Boxplot between Absences and School',
+           x = 'Attends Gabriel Pereira',
+           y = 'Absences') +
+  small_title
+
+b2 <- ggplot(fullDataSet, aes(x = bigFamily, y = absences)) +
+      geom_boxplot() +
+      labs(title = 'Boxplot between Absences and Family Size',
+           x = 'Family Size Greater than 3',
+           y = 'Absences') +
+  small_title
+
+b3 <- ggplot(fullDataSet, aes(x = rural, y = absences)) +
+      geom_boxplot() +
+      labs(title = 'Boxplot between Absences and whether Students Live Rurally',
+           x = 'Lives in Rural Area',
+           y = 'Absences') +
+  small_title
+
+b4 <- ggplot(fullDataSet, aes(x = female, y = absences)) +
+      geom_boxplot() +
+      labs(title = 'Boxplot between Absences and Sex',
+           x = 'Female or not',
+           y = 'Absences') +
+  small_title
+
+b5 <- ggplot(fullDataSet, aes(x = parentsApart, y = absences)) +
+      geom_boxplot() +
+      labs(title = 'Boxplot between Absences and Parents Housing Status',
+           x = 'Parents Separated or not',
+           y = 'Absences') +
+  small_title
+
+b6 <- ggplot(fullDataSet, aes(x = extraSchool, y = absences)) +
+      geom_boxplot() +
+      labs(title = 'Boxplot between Absences and Extra Help at School',
+           x = 'Receives Extra Help',
+           y = 'Absences')+
+  small_title
+
+b7 <- ggplot(fullDataSet, aes(x = familyHelp, y = absences)) +
+      geom_boxplot() +
+      labs(title = 'Boxplot between Absences and Help from Family at Home',
+           x = 'Receives Help from Family at Home',
+           y = 'Absences')+
+  small_title
+
+b8 <- ggplot(fullDataSet, aes(x = seeksCollege, y = absences)) +
+      geom_boxplot() +
+      labs(title = 'Boxplot between Absences and Aspirations',
+           x = 'Aspires to go to College',
+           y = 'Absences') +
+  small_title
+
+b9 <- ggplot(fullDataSet, aes(x = significantOther, y = absences)) +
+      geom_boxplot() +
+      labs(title = 'Boxplot between Absences and Romantic Relationship Status',
+           x = 'Has Significant Other',
+           y = 'Absences') +
+  small_title
+
+# Arrange plots in a grid
+grid.arrange(b1, b2, b3, b4, b5, b6, b7, b8, b9, ncol = 3)
 ```
-
-
-Boxplots between Grades and other categorical variables
-
-```{r}
-boxplot(fullDataSet$G3 ~ fullDataSet$gp,
-        main = 'Boxplot between Final Grade and School',
-        xlab = 'Attends Gabriel Pereira',
-        ylab = 'Final Grade')
-```
-
-
-```{r}
-boxplot(fullDataSet$G3 ~ fullDataSet$bigFamily,
-        main = 'Boxplot between Final Grade and Family Size',
-        xlab = 'Family Size Greater than 3',
-        ylab = 'Final Grade')
-```
-
-```{r}
-boxplot(fullDataSet$G3 ~ fullDataSet$rural,
-        main = 'Boxplot between Final Grade and whether Students Live Rurally',
-        xlab = 'Lives in Rural Area',
-        ylab = 'Final Grade')
-```
-
-```{r}
-boxplot(fullDataSet$G3 ~ fullDataSet$female,
-        main = 'Boxplot between Final Grade and Sex',
-        xlab = 'Female or not',
-        ylab = 'Final Grade')
-```
-
-```{r}
-boxplot(fullDataSet$G3 ~ fullDataSet$parentsApart,
-        main = 'Boxplot between Final Grade and Parents Housing Status',
-        xlab = 'Parents Separated or not',
-        ylab = 'Final Grade')
-```
-
-```{r}
-boxplot(fullDataSet$G3 ~ fullDataSet$extraSchool,
-        main = 'Boxplot between Final Grade and Extra Help at School',
-        xlab = 'Receives Extra Help',
-        ylab = 'Final Grade')
-```
-
-```{r}
-boxplot(fullDataSet$G3 ~ fullDataSet$familyHelp,
-        main = 'Boxplot between Final Grade and Help from Family at Home',
-        xlab = 'Receives Help from Family at Home',
-        ylab = 'Final Grade')
-```
-
-```{r}
-boxplot(fullDataSet$G3 ~ fullDataSet$seeksCollege,
-        main = 'Boxplot between Final Grade and Aspirations',
-        xlab = 'Aspires to go to College',
-        ylab = 'Final Grade')
-```
-
-```{r}
-boxplot(fullDataSet$G3 ~ fullDataSet$significantOther,
-        main = 'Boxplot between Final Grade and Romantic Relationship Status',
-        xlab = 'Has Significant Other',
-        ylab = 'Final Grade')
-```
-
+##Correlation Plots
 ```{r}
 round(cor(fullDataSet), 2)
+corrplot(cor(fullDataSet), type = "upper")
 ```
 
 There appears to potentially be multicollinearity between the students' first period, second period, and final grades.
 
 For this project, we decided to use the AIC metric as it is less selective. Because of this, the model will result in a more explanatory model than using the BIC metric. We also elected to use best subsets as it will return the absolute best model possible based on this metric. Since there are only 14 variables, this option shouldn't take too long to execute.
 
+#Finding Best Model
 ```{r}
-library(bestglm)
 
 bestSubset <- bestglm(fullDataSet, IC = 'BIC')
 bestSubset
@@ -163,41 +192,34 @@ This model decided the most significant variables for a students final grades ar
 Now we will check the model assumptions.
 
 ```{r}
-library(ggfortify)
-library(tidyverse)
-library(car)
-```
-
-
-```{r}
 model <- lm(absences ~ G3 + significantOther + age + gp + parentsApart, fullDataSet)
 ```
 
-
+#Model Assumptions
 ```{r}
 avPlots(model)
 ```
 
 From the added-variable plots, it appears that the absences variable has a pattern in its residuals. Other than that, the plots all appear to be mostly linear.
 
+##Normality
 ```{r}
 fullDataSet$residuals <- model$residuals
 fullDataSet$fitted <- model$fitted.values
 shapiro.test(fullDataSet$residuals)
-```
-
-```{r}
 autoplot(model, which = 2)
 ```
 
 Both a shapiro-wilk test and a QQ plot seem to indicate that the assumption of normal errors is violated.
 
+##Homeoscacity
 ```{r}
 autoplot(model, which = 3)
 ```
 
 The scale-location plot isn't very flat, as such it appears that the assumption of homoscedasticity is violated.
 
+##Influential points check
 ```{r}
 autoplot(model, which = 4)
 ```
@@ -206,12 +228,10 @@ It appears that there are no points with undue influence, thus the tacit assumpt
 
 The data was collected by using school reports and questionaires. As such we can assume that the datapoints are independent as no other students answers should affect how another student answered the survey.
 
+##Multicollinearity check
 ```{r}
-library(car)
 vif(model)
 ```
-
-
 
 #Transforming data to pass assumptions
 
@@ -242,13 +262,14 @@ bc = boxCox(model) # this will produce the plot
 lambda.opt = bc$x[which.max(bc$y)]
 ```
 
-
+#Remake model
 ```{r}
 
 logModel <- lm(log(absences) ~ G3 + age + gp + significantOther + parentsApart, fullDataSet)
 summary(logModel)
 ```
 
+#Recheck assumptions
 ```{r}
 shapiro.test(logModel$residuals)
 autoplot(logModel, which = 2)
@@ -260,5 +281,11 @@ autoplot(logModel)
 
 ```{r}
 vif(logModel)
+```
+
+#create confint
+```{r}
+confint(logModel,
+        level = .95)
 ```
 
