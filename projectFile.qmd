@@ -52,6 +52,7 @@ write.csv(dataCleaned, "cleanedMathData.csv", row.names = FALSE)
 ```{r}
 fullDataSet <- read.csv('cleanedMathData.csv')
 fullDataSet <- fullDataSet[, c(1:2, 4:15, 3)]
+fullDataSet <- fullDataSet[fullDataSet$absences != 0, ]
 ```
 
 ```{r}
@@ -169,7 +170,7 @@ library(car)
 
 
 ```{r}
-model <- lm(absences ~ G2 + G3 + significantOther + age + gp + parentsApart, fullDataSet)
+model <- lm(absences ~ G3 + significantOther + age + gp + parentsApart, fullDataSet)
 ```
 
 
@@ -216,35 +217,35 @@ vif(model)
 
 ```{r}
 # ##Attempt at BoxCox.
-fullDataSet$absences <- fullDataSet$absences + .01 #boxcox doesn't work with 0's. 
-fullDataSet$G2 <- fullDataSet$G2 + .01
-fullDataSet$G3 <- fullDataSet$G3 + .01
+#fullDataSet$absences <- fullDataSet$absences + .01 #boxcox doesn't work with 0's. 
+#fullDataSet$G2 <- fullDataSet$G2 + .01
+#fullDataSet$G3 <- fullDataSet$G3 + .01
 # 
-bc = boxCox(model) # this will produce the plot
-lambda.opt = bc$x[which.max(bc$y)] 
+#bc = boxCox(model) # this will produce the plot
+#lambda.opt = bc$x[which.max(bc$y)] 
 # 
-transformed_var <- (fullDataSet$G3^lambda.opt - 1) / lambda.opt
+#transformed_var <- (fullDataSet$G3^lambda.opt - 1) / lambda.opt
 # 
-model_boxcox <- lm(transformed_var ~ G1 + G2 + significantOther + age + absences, fullDataSet)
-summary(model_boxcox)
-autoplot(model_boxcox, which = 2)
-shapiro.test(model_boxcox$residuals)
+#model_boxcox <- lm(transformed_var ~ G1 + G2 + significantOther + age + absences, fullDataSet)
+#summary(model_boxcox)
+#autoplot(model_boxcox, which = 2)
+#shapiro.test(model_boxcox$residuals)
 
 
 ```
 
 ```{r}
 # #other attempts
-invTranPlot(log(absences) ~ G2 , data = fullDataSet, lambda =  2, optimal = TRUE)
+#invTranPlot(log(absences) ~ G2 , data = fullDataSet, lambda =  2, optimal = TRUE)
 
-bc = boxCox(logModel) # this will produce the plot
+bc = boxCox(model) # this will produce the plot
 lambda.opt = bc$x[which.max(bc$y)]
 ```
 
 
 ```{r}
-dataFiltered <- fullDataSet[fullDataSet$absences != 0, ]
-logModel <- lm(log(absences) ~ G3 + age + gp + significantOther + parentsApart, dataFiltered)
+
+logModel <- lm(log(absences) ~ G3 + age + gp + significantOther + parentsApart, fullDataSet)
 summary(logModel)
 ```
 
