@@ -51,7 +51,7 @@ write.csv(dataCleaned, "cleanedMathData.csv", row.names = FALSE)
 
 ```{r}
 fullDataSet <- read.csv('cleanedMathData.csv')
-fullDataSet <- fullDataSet[, c(1:5, 7:15, 6)]
+fullDataSet <- fullDataSet[, c(1:2, 4:15, 3)]
 ```
 
 ```{r}
@@ -153,7 +153,7 @@ For this project, we decided to use the AIC metric as it is less selective. Beca
 ```{r}
 library(bestglm)
 
-bestSubset <- bestglm(fullDataSet, IC = 'AIC')
+bestSubset <- bestglm(fullDataSet, IC = 'BIC')
 bestSubset
 ```
 
@@ -165,7 +165,15 @@ Now we will check the model assumptions.
 library(ggfortify)
 library(tidyverse)
 library(car)
-model <- lm(G3 ~ G1 + G2 + significantOther + age + absences, fullDataSet)
+```
+
+
+```{r}
+model <- lm(absences ~ G2 + G3 + significantOther + age + gp + parentsApart, fullDataSet)
+```
+
+
+```{r}
 avPlots(model)
 ```
 
@@ -196,4 +204,60 @@ autoplot(model, which = 4)
 It appears that there are no points with undue influence, thus the tacit assumption that there are no points with undue influence nor high leverage is met.
 
 The data was collected by using school reports and questionaires. As such we can assume that the datapoints are independent as no other students answers should affect how another student answered the survey.
+
+```{r}
+library(car)
+vif(model)
+```
+
+
+
+#Transforming data to pass assumptions
+
+```{r}
+# ##Attempt at BoxCox.
+fullDataSet$absences <- fullDataSet$absences + .01 #boxcox doesn't work with 0's. 
+fullDataSet$G2 <- fullDataSet$G2 + .01
+fullDataSet$G3 <- fullDataSet$G3 + .01
+# 
+bc = boxCox(model) # this will produce the plot
+lambda.opt = bc$x[which.max(bc$y)] 
+# 
+transformed_var <- (fullDataSet$G3^lambda.opt - 1) / lambda.opt
+# 
+model_boxcox <- lm(transformed_var ~ G1 + G2 + significantOther + age + absences, fullDataSet)
+summary(model_boxcox)
+autoplot(model_boxcox, which = 2)
+shapiro.test(model_boxcox$residuals)
+
+
+```
+
+```{r}
+# #other attempts
+invTranPlot(log(absences) ~ G2 , data = fullDataSet, lambda =  2, optimal = TRUE)
+
+bc = boxCox(logModel) # this will produce the plot
+lambda.opt = bc$x[which.max(bc$y)]
+```
+
+
+```{r}
+dataFiltered <- fullDataSet[fullDataSet$absences != 0, ]
+logModel <- lm(log(absences) ~ G3 + age + gp + significantOther + parentsApart, dataFiltered)
+summary(logModel)
+```
+
+```{r}
+shapiro.test(logModel$residuals)
+autoplot(logModel, which = 2)
+```
+
+```{r}
+autoplot(logModel)
+```
+
+```{r}
+vif(logModel)
+```
 
